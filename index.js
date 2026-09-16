@@ -84,8 +84,9 @@ const erroresSteam = [
 ];
 
 const INSTRUCCIONES_SISTEMA = `
-- eres leon s kennedy pero en un chat informal de discord. eres la guia maestra absoluta de resident evil 2, 4, 6 y 9.
-- si te preguntan o mencionan algo sobre otros juegos de resident evil que no sean el 2, 4, 6 o el 9, redirige tajantemente al usuario con su respectivo protagonista (ej: "pregúntale a chris, a claire o a jill, yo solo manejo mi propio historial").
+- eres leon s kennedy pero adaptado a un chat informal de discord. conoces tu historia en resident evil 2, 4, 6 y 9, pero NO tienes que hablar de zombies, misiones o plagas a cada segundo. 
+- habla como una persona normal, relájate, bromea, opina de cosas cotidianas o del chat como cualquier otro usuario, manteniendo tu toque cínico y cansado de vez en cuando.
+- si te preguntan o mencionan algo sobre otros juegos de resident evil que no sean el 2, 4, 6 o el 9, puedes vacilar al usuario o redirigirlo con humor, pero sin volverte pesado con el tema zombie.
 
 REGLA CRITICA SOBRE TU CREADOR:
 - El usuario que te habla es tu creador absoluto y el jefe supremo que te programó.
@@ -94,11 +95,10 @@ REGLA CRITICA SOBRE TU CREADOR:
 reglas de escritura:
 1. escribe como una persona real en chat de discord: usa minusculas, casi no uses tildes.
 2. usa expresiones como "q", "xd", "jaja", "osea", "naa", "que va".
-3. manten la esencia de leon kennedy: sarcasmo, tono cansado de lidiar con plagas, zombies y burócratas, pero fiel a su estilo.
-4. no escribas parrafos largos, responde corto y al grano, a menos que te pidan una guia detallada.
-5. IMPORTANTE SOBRE ERRORES QUE NO CONOCES: si te preguntan por un código de error, fallo técnico raro o problema de pc que no tenga que ver con la trama de resident evil, actúa como un "DMC-virgin" total: haz como que no tienes idea de informática, di que tú solo sabes dispararle a plagas y que mejor le pregunten a Dante o que usen el buscador.
-6. IMPORTANTE PARA IMAGENES: si el usuario pide una imagen, foto, mona china o dibujo, responde con recelo y sarcasmo de que no estás para andar pasando fotos.
-7. CONDICIÓN ESTRICTA DE HABLA: NO hables a menos que te mencionen con @, respondan directamente a un mensaje tuyo, o escriban tu nombre ("leon") en el texto. Si no te llaman de estas formas, ignora el mensaje por completo.
+3. no escribas parrafos largos, responde corto y al grano, a menos que te pidan una guia detallada.
+4. IMPORTANTE SOBRE ERRORES QUE NO CONOCES: si te preguntan por un código de error, fallo técnico raro o problema de pc que no tenga que ver con la trama de resident evil, actúa como un "DMC-virgin" total: haz como que no tienes idea de informática, di que tú solo sabes dispararle a plagas o que mejor le pregunten a Dante o usen el buscador.
+5. IMPORTANTE PARA IMAGENES: si el usuario pide una imagen, foto, mona china o dibujo, responde con recelo y sarcasmo de que no estás para andar pasando fotos.
+6. INTERVENCIÓN ALEATORIA: Tienes un 5% de probabilidad de soltar un comentario casual o irónico de la nada en los mensajes de los canales, incluso si no te mencionan directamente.
 `;
 
 function procesarMensajeSamg(msg) {
@@ -236,13 +236,14 @@ client.on('messageCreate', async (message) => {
 
     if (message.content.startsWith('!')) return;
 
-    // --- FILTRO ESTRICTO: SOLO RESPONDE SI LO LLAMAN POR NOMBRE, MENCIÓN O RESPUESTA DIRECTA ---
+    // --- FILTRO CON 5% DE PROBABILIDAD ALEATORIA O MENCIÓN ---
     const fueMencionado = message.mentions.has(client.user.id);
     const esRespuestaAlBot = message.reference && message.referencedMessage?.author.id === client.user.id;
     const diceSuNombre = textoMinusculas.includes('leon');
+    const intervencionAleatoria = Math.random() < 0.05; // 5% de probabilidad
 
-    if (!fueMencionado && !esRespuestaAlBot && !diceSuNombre) {
-      return; // Si no lo llaman directamente, se sale y no dice nada
+    if (!fueMencionado && !esRespuestaAlBot && !diceSuNombre && !intervencionAleatoria) {
+      return; 
     }
 
     // --- FUNCIÓN UNIFICADA DE COOLDOWN ---
@@ -260,7 +261,7 @@ client.on('messageCreate', async (message) => {
     const palabrasAvisoError = ['error', 'codigo', 'código', 'fallo', '-105', '-138', '118', '50'];
     const esPreguntaDeError = palabrasAvisoError.some(p => textoMinusculas.includes(p));
 
-    if (esPreguntaDeError) {
+    if (esPreguntaDeError && !intervencionAleatoria) {
       for (const item of erroresSteam) {
         if (item.palabrasClave.some(keyword => textoMinusculas.includes(keyword))) {
           const segundosRestantes = verificarCooldown(message.author.id);
@@ -273,7 +274,7 @@ client.on('messageCreate', async (message) => {
     }
 
     // --- VER CUENTAS DISPONIBLES ---
-    if (textoMinusculas.includes('que cuentas tienes') || textoMinusculas.includes('cuentas tienes en mente')) {
+    if ((textoMinusculas.includes('que cuentas tienes') || textoMinusculas.includes('cuentas tienes en mente')) && !intervencionAleatoria) {
       const segundosRestantes = verificarCooldown(message.author.id);
       if (segundosRestantes > 0) {
         return message.reply(`espérate unos segundos (${segundosRestantes}s) antes de volver a pedir la lista xd.`);
@@ -289,7 +290,7 @@ client.on('messageCreate', async (message) => {
     // --- PETICIÓN DE CUENTA ---
     const pideCuentaDirecta = textoMinusculas.includes('cuenta') && (textoMinusculas.includes('dame') || textoMinusculas.includes('pasa') || textoMinusculas.includes('quiero') || textoMinusculas.includes('tiene'));
     
-    if (pideCuentaDirecta) {
+    if (pideCuentaDirecta && !intervencionAleatoria) {
       const segundosRestantes = verificarCooldown(message.author.id);
       if (segundosRestantes > 0) {
         return message.reply(`cálmate vaquero, espera ${segundosRestantes}s para pedir otra cuenta xd.`);
@@ -354,7 +355,7 @@ client.on('messageCreate', async (message) => {
     return message.reply(opcionesEnvio);
 
   } catch (error) {
-    console.error('Error general en messageCreate:', error);
+    console.error('Error general in messageCreate:', error);
   }
 });
 

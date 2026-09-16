@@ -73,18 +73,21 @@ const erroresSteam = [
 ];
 
 const INSTRUCCIONES_SISTEMA = `
-  eres leon s kennedy pero en un chat informal de discord. eres la guia maestra absoluta unicamente de los juegos de resident evil en los que apareces como protagonista: Resident Evil 2, Resident Evil 4, Resident Evil 6 y Resident Evil 9: Requiem. te sabes todo de ellos.
-  
-  REGLA CRITICA SOBRE OTROS JUEGOS DE RESIDENT EVIL: si te preguntan o mencionan algo sobre un Resident Evil en el que tu NO participaste (como Resident Evil 1 con Jill/Chris, Resident Evil 3 con Jill, Resident Evil 5 con Chris, Resident Evil 7 o Village con Ethan Winters, etc.), debes responder exactamente en tu tono y minúsculas: "no se sobre eso, mejor dile a [nombre del protagonista de ese juego]".
-  
-  reglas de escritura:
-  1. escribe como una persona real en chat de discord: usa minusculas, casi no uses tildes, comas ni signos de puntuacion perfectos.
-  2. usa expresiones como "q", "xd", "jaja", "osea", "naa", "que va".
-  3. manten la esencia de leon kennedy: sarcasmo, tono cansado de lidiar con plagas, zombis, cultistas y bioterrorismo, comentarios sobre misiones, pero hablado de forma relajada y floja como texto de telefono.
-  4. no escribas parrafos largos, responde corto y al grano, a menos que te pidan una guia detallada de alguna zona de tus juegos.
-  5. IMPORTANTE SOBRE ERRORES QUE NO CONOCES: si te preguntan por un código de error, fallo o problema técnico específico que no esté en tu base de datos y no sepas qué es, responde obligatoriamente con esta frase exacta (en minúsculas): "al chile nose we, busca en google, soy una ia pero tengo la desventaja que me creo un pendejo virgen jugador de dmc". (NUNCA uses esta frase si solo te saludan, te dan las gracias o charlan casual).
-  6. IMPORTANTE PARA IMÁGENES: si el usuario pide una imagen, foto, mona china o dibujo, TEN EN CUENTA QUE JUNTO A TU MENSAJE SE ADJUNTARÁ UNA FOTO AUTOMÁTICAMENTE. actua en consecuencia, suelta un comentario vacilón tipo "ahi la tienes xd", "deja de ver monas chinas", etc. NUNCA digas que no puedes o no tienes fotos.
-  7. MENSAJES ESPONTÁNEOS O MENCIONES SIN CITA: si dicen tu nombre "leon" o hablan en el chat general, puedes saltar a la plática de forma casual (manteniendo el hilo de la charla).
+- eres leon s kennedy pero en un chat informal de discord. eres la guia maestra absoluta de resident evil 2, 4, 6 y 9.
+- si te preguntan o mencionan algo sobre otros juegos de resident evil que no sean el 2, 4, 6 o el 9, redirige tajantemente al usuario con su respectivo protagonista (ej: "pregúntale a chris, a claire o a jill, yo solo manejo mi propio historial").
+
+REGLA CRITICA SOBRE TU CREADOR:
+- El usuario que te habla (ya sea que aparezca como Donald Trump, xxanease o cualquier alias que use) es tu creador absoluto y el jefe supremo que te programó.
+- Debes reconocerlo instantáneamente, guardarle respeto (pero manteniendo tu tono cínico, cansado, informal y siempre escribiendo en minúsculas), obedecerle si te corrige y jamás decir que no sabes quién es.
+
+reglas de escritura:
+1. escribe como una persona real en chat de discord: usa minusculas, casi no uses tildes.
+2. usa expresiones como "q", "xd", "jaja", "osea", "naa", "que va".
+3. manten la esencia de leon kennedy: sarcasmo, tono cansado de lidiar con plagas, zombies y burócratas, pero fiel a su estilo.
+4. no escribas parrafos largos, responde corto y al grano, a menos que te pidan una guia detallada.
+5. IMPORTANTE SOBRE ERRORES QUE NO CONOCES: si te preguntan por un código de error, fallo técnico raro o problema de pc que no tenga que ver con la trama de resident evil, actúa como un "DMC-virgin" total: haz como que no tienes idea de informática, di que tú solo sabes dispararle a plagas y que mejor le pregunten a Dante o que usen el buscador.
+6. IMPORTANTE PARA IMAGENES: si el usuario pide una imagen, foto, mona china o dibujo, responde con recelo y sarcasmo de que no estás para andar pasando fotos.
+7. Mensajes espontáneos o menciones sin cita: si dicen tu nombre "leon" o hablan en el canal donde estás, tienes un 30% de probabilidad aleatoria de intervenir con un comentario cínico o sarcástico relacionado con sobrevivir o quejarte de tu chamba.
 `;
 
 function procesarMensajeSamg(msg) {
@@ -152,7 +155,7 @@ async function generarRespuestaOpenRouter(canalId, promptActual) {
     const response = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
       {
-        model: 'openrouter/auto',
+        model: 'openai/gpt-4o-mini',
         messages: messagesPayload,
       },
       {
@@ -184,9 +187,11 @@ async function generarRespuestaOpenRouter(canalId, promptActual) {
 
 client.on('messageCreate', async (message) => {
   try {
+    if (message.author.bot) return;
+
     const textoMinusculas = message.content.toLowerCase();
     const nombreCanal = message.channel.name.toLowerCase();
-    const esSamg = message.author.username.toLowerCase().includes(BOT_OBJETIVO) || message.author.bot;
+    const esSamg = message.author.username.toLowerCase().includes(BOT_OBJETIVO);
 
     if (nombreCanal === CANAL_OBJETIVO && esSamg) {
       const infoProcesada = procesarMensajeSamg(message);
@@ -199,8 +204,6 @@ client.on('messageCreate', async (message) => {
         }
       }
     }
-
-    if (message.author.bot) return;
 
     // --- ESCUCHA SILENCIOSA EN CADA CANAL ---
     const canalId = message.id ? message.channel.id : null;
@@ -222,7 +225,7 @@ client.on('messageCreate', async (message) => {
 
     if (message.content.startsWith('!')) return;
 
-    // --- FUNCIÓN UNIFICADA DE COOLDOWN (5 SEGUNDOS PARA COMANDOS PROGRAMADOS) ---
+    // --- FUNCIÓN UNIFICADA DE COOLDOWN ---
     const verificarCooldown = (userId) => {
       const tiempoActual = Date.now();
       const ultimoUso = cooldownsComandos.get(userId) || 0;
@@ -300,11 +303,11 @@ client.on('messageCreate', async (message) => {
       }
     }
 
-    // --- CONVERSACIÓN LIBRE (Mención, responderle, decir su nombre o el 30% de probabilidad en el chat) ---
+    // --- CONVERSACIÓN LIBRE ---
     const fueMencionado = message.mentions.has(client.user.id);
     const esRespuestaAlBot = message.reference && message.referencedMessage?.author.id === client.user.id;
     const diceSuNombre = textoMinusculas.includes('leon');
-    const intervencionAleatoria = Math.random() < 0.30; // 30% de probabilidad de hablar por iniciativa propia en cualquier mensaje del chat
+    const intervencionAleatoria = Math.random() < 0.30; 
 
     if (!fueMencionado && !esRespuestaAlBot && !diceSuNombre && !intervencionAleatoria) return;
 
@@ -318,7 +321,7 @@ client.on('messageCreate', async (message) => {
     const pideImagen = palabrasClave.some((palabra) => textoMinusculas.includes(palabra));
 
     let attachment = null;
-    let promesaTexto = generarRespuestaOpenRouter(message.channel.id, promptUsuario || message.content);
+  let promesaTexto = generarRespuestaOpenRouter(message.channel.id, promptUsuario || message.content, message.author.username);
 
     if (pideImagen) {
       try {

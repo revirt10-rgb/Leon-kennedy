@@ -23,37 +23,21 @@ const client = new Client({
 
 const memoriasCanales = new Map();
 const cooldownsComandos = new Map();
-let baseDeDatosCuentas = [];
+
+// --- SET ANTI-DUPLICADOS (Evita que el mismo mensaje se procese dos veces) ---
+const mensajesProcesados = new Set();
 
 // --- ESTADO DE ENCENDIDO/APAGADO ---
 let botActivado = true;
 
-const CANAL_OBJETIVO = 'ε⦁s⦁*cuentas-free'; 
-const BOT_OBJETIVO = 'systemsamg';   
-
 // --- CANALES DONDE LEON NO DEBE HABLAR (EN MINÚSCULAS) ---
 const CANALES_EXCLUIDOS = ['commands', 'command', 'comandos', 'bot-commands'];
-
-const abreviacionesJuegos = {
-  're4': 'resident evil 4',
-  're2': 'resident evil 2',
-  're3': 'resident evil 3',
-  're5': 'resident evil 5',
-  're6': 'resident evil 6',
-  're7': 'resident evil 7',
-  're8': 'resident evil village',
-  're9': 'resident evil requiem',
-  'fnaf': 'five nights at freddys',
-  'gta': 'grand theft auto',
-  'dmc': 'devil may cry',
-  'cod': 'call of duty'
-};
 
 // --- DICCIONARIO DE ERRORES DE STEAM ---
 const erroresSteam = [
   {
     palabrasClave: ['error 50', 'código de error 50', 'codigo de error 50'],
-    respuesta: 'el error 50 pasa porque hay demasiada gente metida en la misma cuenta al mismo tiempo. aplica el truco de sam: échales los perros cerrando sesión en todos los demás dispositivos y ponte en **modo desconectado** de inmediato para que no te jodan xd.\n\n¿cómo se cierra sesión en las demas cuentas? facil, solo dale click al perfil, anda a detalles de la cuenta, despues seguridad y dispositivos, baja, y donde diga cerrar sesion en todos los dispositivos, le das, y lito'
+    respuesta: 'el error 50 pasa porque hay demasiada gente metida en la misma cuenta al mismo tiempo. aplica el truco: échales los perros cerrando sesión en todos los demás dispositivos y ponte en **modo desconectado** de inmediato para que no te jodan xd.'
   },
   {
     palabrasClave: ['error -105', '-105', 'no se puede contactar con el servidor'],
@@ -77,7 +61,7 @@ const erroresSteam = [
   },
   {
     palabrasClave: ['steam guard', 'autentificador', 'authenticator'],
-    respuesta: 'esa cuenta tiene steam guard activo (pide código al correo o celular). las cuentas free de samg que piden esto usualmente requieren que el dueño original autorice o que uses el truco de entrar sin tocar la verificación si el juego lo permite, pero está cabrón si pide 2fa personal.'
+    respuesta: 'esa cuenta tiene steam guard activo (pide código al correo o celular). está cabrón entrar si pide 2fa personal.'
   },
   {
     palabrasClave: ['en uso', 'sesion abierta', 'sesión abierta', 'jugando en otro', 'en otro equipo'],
@@ -100,61 +84,16 @@ REGLA CRITICA SOBRE TU CREADOR:
 
 reglas de escritura:
 1. escribe como una persona real en chat de discord: usa minusculas, casi no uses tildes.
-2. usa expresiones como "q", "xd", "jaja", "osea", "naa", "que va".
-3. no escribas parrafos largos, responde corto y al grano, a menos que te pidan una guia detallada.
-4. IMPORTANTE SOBRE ERRORES QUE NO CONOCES: si te preguntan por un código de error, fallo técnico raro o problema de pc que no tenga que ver con la trama de resident evil, actúa como un "DMC-virgin" total: haz como que no tienes idea de informática, di que tú solo sabes dispararle a plagas o que mejor le pregunten a Dante o usen el buscador.
-5. IMPORTANTE PARA IMAGENES: si el usuario pide una imagen, foto, mona china o dibujo, responde con recelo y sarcasmo de que no estás para andar pasando fotos.
-6. INTERVENCIÓN ALEATORIA: Tienes un 5% de probabilidad de soltar un comentario casual o irónico de la nada en los mensajes de los canales, incluso si no te mencionan directamente.
+2. NUNCA pongas tu nombre, etiquetas como "leon:" o prefijos al inicio de tus mensajes. Escribe directo lo que vas a decir.
+3. usa expresiones como "q", "xd", "jaja", "osea", "naa", "que va".
+4. no escribas parrafos largos, responde corto y al grano, a menos que te pidan una guia detallada.
+5. IMPORTANTE SOBRE ERRORES QUE NO CONOCES: si te preguntan por un código de error, fallo técnico raro o problema de pc que no tenga que ver con la trama de resident evil, actúa como un "DMC-virgin" total: haz como que no tienes idea de informática, di que tú solo sabes dispararle a plagas o que mejor le pregunten a Dante o usen el buscador.
+6. IMPORTANTE PARA IMAGENES: si el usuario pide una imagen, foto, mona china o dibujo, responde con recelo y sarcasmo de que no estás para andar pasando fotos.
+7. INTERVENCIÓN ALEATORIA: Tienes un 5% de probabilidad de soltar un comentario casual o irónico de la nada en los mensajes de los canales, incluso si no te mencionan directamente.
 `;
 
-function procesarMensajeSamg(msg) {
-  let textoCompleto = msg.content || '';
-  if (msg.embeds && msg.embeds.length > 0) {
-    msg.embeds.forEach(embed => {
-      if (embed.title) textoCompleto += '\n' + embed.title;
-      if (embed.description) textoCompleto += '\n' + embed.description;
-      if (embed.fields && embed.fields.length > 0) {
-        embed.fields.forEach(field => {
-          textoCompleto += `\n${field.name}: ${field.value}`;
-        });
-      }
-    });
-  }
-  return textoCompleto.trim();
-}
-
-client.once('ready', async () => {
+client.once('ready', () => {
   console.log(`Bot encendido como ${client.user.tag} listo para responder`);
-
-  for (const [guildId, guild] of client.guilds.cache) {
-    try {
-      const canalesTexto = guild.channels.cache.filter(c => c.isTextBased() && c.name.toLowerCase() === CANAL_OBJETIVO);
-      for (const [canalId, canal] of canalesTexto) {
-        const mensajes = await canal.messages.fetch({ limit: 50 }).catch(() => null);
-        if (mensajes) {
-          const mensajesOrdenados = Array.from(mensajes.values()).reverse();
-          mensajesOrdenados.forEach(msg => {
-            const autorUser = msg.author.username.toLowerCase();
-            const esSamg = autorUser.includes(BOT_OBJETIVO) || msg.author.bot;
-            if (esSamg) {
-              const infoProcesada = procesarMensajeSamg(msg);
-              if (infoProcesada.length > 0) {
-                if (!baseDeDatosCuentas.some(c => c.enlaceOriginal === msg.url)) {
-                  baseDeDatosCuentas.push({
-                    contenido: infoProcesada,
-                    enlaceOriginal: msg.url
-                  });
-                }
-              }
-            }
-          });
-        }
-      }
-      console.log(`[AUTO-LEER] Se cargaron ${baseDeDatosCuentas.length} cuentas de SystemsSamg desde #${CANAL_OBJETIVO}.`);
-    } catch (error) {
-      console.error('Error al escanear canales automáticamente al iniciar:', error);
-    }
-  }
 });
 
 async function generarRespuestaOpenRouter(canalId, promptActual, nombreUsuario) {
@@ -186,8 +125,11 @@ async function generarRespuestaOpenRouter(canalId, promptActual, nombreUsuario) 
       }
     );
 
-    const respuestaTexto = response.data.choices?.[0]?.message?.content || 'naa no se q decir xd';
+    let respuestaTexto = response.data.choices?.[0]?.message?.content || 'naa no se q decir xd';
     
+    // Limpieza de seguridad por si la IA insiste en poner su nombre al inicio
+    respuestaTexto = respuestaTexto.replace(/^(leon:|leon kennedy:|bot:)\s*/i, '');
+
     historialCanal.push({ role: 'user', content: `${nombreUsuario}: ${promptActual}` });
     historialCanal.push({ role: 'assistant', content: respuestaTexto });
 
@@ -206,31 +148,23 @@ client.on('messageCreate', async (message) => {
   try {
     if (message.author.bot) return;
 
-    // --- ANTIDOBLE RESPUESTA ---
-    if (message.processedByBot) return;
-    message.processedByBot = true;
+    // --- BLOQUEO ANTI-DUPLICADOS POR ID DE MENSAJE ---
+    if (mensajesProcesados.has(message.id)) return;
+    mensajesProcesados.add(message.id);
+
+    // Limpiar el Set cada 5 minutos para que no crezca infinito en memoria
+    if (mensajesProcesados.size > 500) {
+      const primerItem = mensajesProcesados.values().next().value;
+      mensajesProcesados.delete(primerItem);
+    }
 
     const textoMinusculas = message.content.toLowerCase();
     const nombreCanal = message.channel.name.toLowerCase();
-    const esSamg = message.author.username.toLowerCase().includes(BOT_OBJETIVO);
 
-    // Guardar cuentas de Samg de fondo incluso si está apagado
-    if (nombreCanal === CANAL_OBJETIVO && esSamg) {
-      const infoProcesada = procesarMensajeSamg(message);
-      if (infoProcesada.length > 0) {
-        if (!baseDeDatosCuentas.some(c => c.enlaceOriginal === message.url)) {
-          baseDeDatosCuentas.push({
-            contenido: infoProcesada,
-            enlaceOriginal: message.url
-          });
-        }
-      }
-    }
-
-    // --- COMANDOS DE APAGADO Y ENCENDIDO ---
+    // --- 1. GESTIÓN EXCLUSIVA DE COMANDOS ---
     if (message.content === '!apagar') {
       botActivado = false;
-      return message.reply('me apagaron... descativando protocolos de la dso, ya no hablaré xd.');
+      return message.reply('me apagaron... desactivando protocolos de la dso, ya no hablaré xd.');
     }
 
     if (message.content === '!encender') {
@@ -238,12 +172,20 @@ client.on('messageCreate', async (message) => {
       return message.reply('estoy de vuelta en el ruedo. que los zombies se guarden xd.');
     }
 
-    // Si el bot está apagado, ignora todo lo demás (excepto los comandos de encendido de arriba)
+    if (message.content === '!clear') {
+      memoriasCanales.clear();
+      return message.reply('limpié toda la memoria... me quedé en blanco, como si acabara de salir de Raccoon City xd.');
+    }
+
+    // Si el bot está apagado, ignora todo lo demás de aquí en adelante
     if (!botActivado) return;
+
+    // Si es cualquier otro comando que empiece con '!', lo ignoramos por completo
+    if (message.content.startsWith('!')) return;
 
     // --- ESCUCHA SILENCIOSA EN CADA CANAL (EXCEPTO EXCLUIDOS) ---
     const canalId = message.id ? message.channel.id : null;
-    if (canalId && !message.content.startsWith('!') && !CANALES_EXCLUIDOS.includes(nombreCanal)) {
+    if (canalId && !CANALES_EXCLUIDOS.includes(nombreCanal)) {
       let historialCanal = memoriasCanales.get(canalId) || [];
       historialCanal.push({ role: 'user', content: `${message.author.username} dice: ${message.content}` });
       
@@ -252,14 +194,6 @@ client.on('messageCreate', async (message) => {
       }
       memoriasCanales.set(canalId, historialCanal);
     }
-
-    if (message.content === '!clear') {
-      baseDeDatosCuentas = [];
-      memoriasCanales.clear();
-      return message.reply('limpié toda la memoria y cuentas... me quedé en blanco, como si acabara de salir de Raccoon City xd.');
-    }
-
-    if (message.content.startsWith('!')) return;
 
     // --- SI EL CANAL ESTÁ EN LA LISTA NEGRA DE COMANDOS, IGNORAR ---
     if (CANALES_EXCLUIDOS.includes(nombreCanal)) {
@@ -287,7 +221,7 @@ client.on('messageCreate', async (message) => {
       return 0;
     };
 
-    // --- 1. DETECCIÓN DE ERRORES DE STEAM ---
+    // --- 2. DETECCIÓN DE ERRORES DE STEAM ---
     const palabrasAvisoError = ['error', 'codigo', 'código', 'fallo', '-105', '-138', '118', '50'];
     const esPreguntaDeError = palabrasAvisoError.some(p => textoMinusculas.includes(p));
 
@@ -298,59 +232,8 @@ client.on('messageCreate', async (message) => {
           if (segundosRestantes > 0) {
             return message.reply(`espérate unos segundos (${segundosRestantes}s), no spamees los comandos del sistema xd.`);
           }
-          return message.reply(item.respuesta);
+          return message.reply(item.respuesta); 
         }
-      }
-    }
-
-    // --- VER CUENTAS DISPONIBLES ---
-    if ((textoMinusculas.includes('que cuentas tienes') || textoMinusculas.includes('cuentas tienes en mente')) && !intervencionAleatoria) {
-      const segundosRestantes = verificarCooldown(message.author.id);
-      if (segundosRestantes > 0) {
-        return message.reply(`espérate unos segundos (${segundosRestantes}s) antes de volver a pedir la lista xd.`);
-      }
-
-      if (baseDeDatosCuentas.length === 0) {
-        return message.reply('no tengo cuentas de Samg guardadas todavía... espera a que suelte alguna en el canal de cuentas-free xd.');
-      }
-      const listaResumen = baseDeDatosCuentas.map((c, i) => `[${i + 1}] ${c.contenido.split('\n')[0]}`).join('\n');
-      return message.reply(`tengo estas cuentas de Samg en mente:\n\n${listaResumen}\n\nDime "dame una cuenta de RE4" para pasarte los datos.`);
-    }
-
-    // --- PETICIÓN DE CUENTA ---
-    const pideCuentaDirecta = textoMinusculas.includes('cuenta') && (textoMinusculas.includes('dame') || textoMinusculas.includes('pasa') || textoMinusculas.includes('quiero') || textoMinusculas.includes('tiene'));
-    
-    if (pideCuentaDirecta && !intervencionAleatoria) {
-      const segundosRestantes = verificarCooldown(message.author.id);
-      if (segundosRestantes > 0) {
-        return message.reply(`cálmate vaquero, espera ${segundosRestantes}s para pedir otra cuenta xd.`);
-      }
-
-      if (baseDeDatosCuentas.length === 0) {
-        return message.reply('todavía no tengo cuentas guardadas en la memoria xd.');
-      }
-
-      let juegoEncontrado = null;
-      for (const [key, fullName] of Object.entries(abreviacionesJuegos)) {
-        if (textoMinusculas.includes(key) || textoMinusculas.includes(fullName)) {
-          juegoEncontrado = baseDeDatosCuentas.find(c => 
-            c.contenido.toLowerCase().includes(key) || c.contenido.toLowerCase().includes(fullName)
-          );
-          if (juegoEncontrado) break;
-        }
-      }
-
-      if (!juegoEncontrado) {
-        juegoEncontrado = baseDeDatosCuentas.find(c => {
-          const contenidoC = c.contenido.toLowerCase();
-          return textoMinusculas.split(' ').some(palabra => palabra.length > 3 && contenidoC.includes(palabra));
-        });
-      }
-
-      if (juegoEncontrado) {
-        return message.reply(`a ver... aquí tienes los datos que soltó Samg:\n\n${juegoEncontrado.contenido}\n\n*(Mensaje original: ${juegoEncontrado.enlaceOriginal})*`);
-      } else {
-        return message.reply(`busqué en los registros de Samg pero no encontré ninguna cuenta que coincida con lo que pides xd.`);
       }
     }
 

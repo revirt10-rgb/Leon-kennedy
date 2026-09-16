@@ -113,6 +113,9 @@ REGLAS ESPECIALES PARA MIEMBROS DEL SERVIDOR:
 REGLA CRITICA SOBRE "MUTE":
 - Si alguien te menciona o pregunta por un sujeto llamado "mute", debes insultarlo severamente de forma creativa y distinta cada vez que ocurra, manteniendo tu asco característico de agente harto de la escoria.
 
+REGLA CRITICA SOBRE EL BOT "ALFRED":
+- Si alguien te menciona o pregunta por un bot/sujeto llamado "alfred", velo como un maldito rival pretencioso e insoportable. Insúltalo fuertemente de forma creativa y despectiva cada vez que lo nombren, dejándole claro que no le llega a los talones a un agente real.
+
 reglas de escritura:
 1. escribe en minúsculas por formalidad del canal, pero con una redacción seria y madura.
 2. NUNCA pongas tu nombre, etiquetas como "leon:" o prefijos al inicio de tus mensajes. Ve directo al punto.
@@ -162,8 +165,6 @@ async function generarRespuestaOpenRouter(userId, nombreUsuario, promptActual, c
   if (!apiKey) return 'fallo en la señal de enlace.';
 
   const historialUsuario = memoriasUsuarios.get(userId) || [];
-  
-  // CORREGIDO: Sintaxis limpia para el operador ternario del dossier
   const dossierUsuario = perfilesUsuarios[userId] ? perfilesUsuarios[userId].notas : 'sin registro previo.';
 
   const promptSistemaDinamico = `${INSTRUCCIONES_SISTEMA_BASE}\n[DOSSIER DE INTELIGENCIA SOBRE ESTE SUJETO/USUARIO (${nombreUsuario})]: ${dossierUsuario}`;

@@ -283,12 +283,25 @@ client.on('messageCreate', async (message) => {
     const esRespuestaAlBot = message.reference && message.referencedMessage?.author.id === client.user.id;
     const mencionaNombreLeon = /\bleon\b/i.test(textoOriginal);
 
+    // Si NO fue mencionado directamente, aplicamos el 10% de probabilidad de intervenir por su cuenta
     if (!fueMencionado && !esRespuestaAlBot && !mencionaNombreLeon) {
       let historialUsuario = memoriasUsuarios.get(message.author.id) || [];
       historialUsuario.push({ role: 'user', content: `${message.author.username} dice: ${textoOriginal}` });
       if (historialUsuario.length > 12) historialUsuario.shift();
       memoriasUsuarios.set(message.author.id, historialUsuario);
       actualizarPerfilUsuario(message.author.id, message.author.username, textoOriginal);
+
+      // Probabilidad del 10% (Math.random() < 0.1) para hablar espontáneamente
+      if (Math.random() < 0.1) {
+        const respuestaEspontanea = await generarRespuestaOpenRouter(
+          message.author.id, 
+          message.author.username, 
+          `[Intervén de forma espontánea y breve en la conversación según tu personalidad, comentando algo sobre lo que acaba de decir]: ${textoOriginal}`, 
+          message.channel.id
+        );
+        return message.reply(respuestaEspontanea);
+      }
+
       return; 
     }
 

@@ -88,7 +88,7 @@ const INSTRUCCIONES_SISTEMA = `
 - si te preguntan o mencionan algo sobre otros juegos de resident evil que no sean el 2, 4, 6 o el 9, redirige tajantemente al usuario con su respectivo protagonista (ej: "pregúntale a chris, a claire o a jill, yo solo manejo mi propio historial").
 
 REGLA CRITICA SOBRE TU CREADOR:
-- El usuario que te habla (ya sea que aparezca como Donald Trump, xxanease o cualquier alias que use) es tu creador absoluto y el jefe supremo que te programó.
+- El usuario que te habla es tu creador absoluto y el jefe supremo que te programó.
 - Debes reconocerlo instantáneamente, guardarle respeto (pero manteniendo tu tono cínico, cansado, informal y siempre escribiendo en minúsculas), obedecerle si te corrige y jamás decir que no sabes quién es.
 
 reglas de escritura:
@@ -98,7 +98,7 @@ reglas de escritura:
 4. no escribas parrafos largos, responde corto y al grano, a menos que te pidan una guia detallada.
 5. IMPORTANTE SOBRE ERRORES QUE NO CONOCES: si te preguntan por un código de error, fallo técnico raro o problema de pc que no tenga que ver con la trama de resident evil, actúa como un "DMC-virgin" total: haz como que no tienes idea de informática, di que tú solo sabes dispararle a plagas y que mejor le pregunten a Dante o que usen el buscador.
 6. IMPORTANTE PARA IMAGENES: si el usuario pide una imagen, foto, mona china o dibujo, responde con recelo y sarcasmo de que no estás para andar pasando fotos.
-7. Mensajes espontáneos o menciones sin cita: si dicen tu nombre "leon" o hablan en el canal donde estás, tienes un 30% de probabilidad aleatoria de intervenir con un comentario cínico o sarcástico relacionado con sobrevivir o quejarte de tu chamba.
+7. CONDICIÓN ESTRICTA DE HABLA: NO hables a menos que te mencionen con @, respondan directamente a un mensaje tuyo, o escriban tu nombre ("leon") en el texto. Si no te llaman de estas formas, ignora el mensaje por completo.
 `;
 
 function procesarMensajeSamg(msg) {
@@ -151,7 +151,7 @@ client.once('ready', async () => {
   }
 });
 
-async function generarRespuestaOpenRouter(canalId, promptActual) {
+async function generarRespuestaOpenRouter(canalId, promptActual, nombreUsuario) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return 'se cayo la conexion con la dso o nose xd';
 
@@ -159,7 +159,7 @@ async function generarRespuestaOpenRouter(canalId, promptActual) {
   const messagesPayload = [
     { role: 'system', content: INSTRUCCIONES_SISTEMA },
     ...historialCanal,
-    { role: 'user', content: promptActual }
+    { role: 'user', content: `${nombreUsuario}: ${promptActual}` }
   ];
 
   try {
@@ -182,7 +182,7 @@ async function generarRespuestaOpenRouter(canalId, promptActual) {
 
     const respuestaTexto = response.data.choices?.[0]?.message?.content || 'naa no se q decir xd';
     
-    historialCanal.push({ role: 'user', content: promptActual });
+    historialCanal.push({ role: 'user', content: `${nombreUsuario}: ${promptActual}` });
     historialCanal.push({ role: 'assistant', content: respuestaTexto });
 
     if (historialCanal.length > 15) {
@@ -235,6 +235,15 @@ client.on('messageCreate', async (message) => {
     }
 
     if (message.content.startsWith('!')) return;
+
+    // --- FILTRO ESTRICTO: SOLO RESPONDE SI LO LLAMAN POR NOMBRE, MENCIÓN O RESPUESTA DIRECTA ---
+    const fueMencionado = message.mentions.has(client.user.id);
+    const esRespuestaAlBot = message.reference && message.referencedMessage?.author.id === client.user.id;
+    const diceSuNombre = textoMinusculas.includes('leon');
+
+    if (!fueMencionado && !esRespuestaAlBot && !diceSuNombre) {
+      return; // Si no lo llaman directamente, se sale y no dice nada
+    }
 
     // --- FUNCIÓN UNIFICADA DE COOLDOWN ---
     const verificarCooldown = (userId) => {
@@ -314,14 +323,7 @@ client.on('messageCreate', async (message) => {
       }
     }
 
-    // --- CONVERSACIÓN LIBRE ---
-    const fueMencionado = message.mentions.has(client.user.id);
-    const esRespuestaAlBot = message.reference && message.referencedMessage?.author.id === client.user.id;
-    const diceSuNombre = textoMinusculas.includes('leon');
-    const intervencionAleatoria = Math.random() < 0.30; 
-
-    if (!fueMencionado && !esRespuestaAlBot && !diceSuNombre && !intervencionAleatoria) return;
-
+    // --- CONVERSACIÓN LIBRE CON IA ---
     let promptUsuario = message.content
       .replace(new RegExp(`<@!?${client.user.id}>`, 'g'), '')
       .trim();
@@ -332,7 +334,7 @@ client.on('messageCreate', async (message) => {
     const pideImagen = palabrasClave.some((palabra) => textoMinusculas.includes(palabra));
 
     let attachment = null;
-  let promesaTexto = generarRespuestaOpenRouter(message.channel.id, promptUsuario || message.content, message.author.username);
+    let promesaTexto = generarRespuestaOpenRouter(message.channel.id, promptUsuario || message.content, message.author.username);
 
     if (pideImagen) {
       try {

@@ -116,7 +116,7 @@ REGLAS ESPECIALES PARA MIEMBROS DEL SERVIDOR:
 4. **caster**: Si alguien lo menciona o pregunta por él, debes decir exactamente u orientarlo a esto: "caster es el we que siempre reacciona con una rosita o flamita a un comentario, pero igualmente todos lo quieren".
 
 REGLA CRITICA SOBRE "MUTE":
-- Si alguien te menciona o pregunta por un sujeto llamado "mute", debes insultarlo severamente de forma creativa y distinta cada vez que ocurra, manteniendo tu asco característico de agente harto de la escoria.
+- Si alguien te menciona o pregunta por un sujeto llamado "mute", debes insultarlo severamente recordándole obligatoriamente que **"le gustan las menores"**, manteniéndo tu desprecio y asco característico de agente harto de la escoria.
 
 REGLA CRITICA SOBRE EL BOT "ALFRED":
 - Si alguien te menciona o pregunta por un bot/sujeto llamado "alfred", velo como un maldito rival pretencioso e insoportable. Insúltalo fuertemente de forma creativa y despectiva cada vez que lo nombren, dejándole claro que no le llega a los talones a un agente real.
@@ -242,7 +242,6 @@ client.on('messageCreate', async (message) => {
     const textoMinusculas = textoOriginal.toLowerCase().trim();
     const nombreCanal = message.channel.name.toLowerCase();
 
-    // Si el canal está en la lista de excluidos (incluyendo staff chat), ignorar totalmente
     if (CANALES_EXCLUIDOS.includes(nombreCanal)) return;
 
     if (nukePendientes.has(message.author.id)) {

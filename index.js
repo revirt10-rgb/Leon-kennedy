@@ -25,8 +25,14 @@ const memoriasCanales = new Map();
 const cooldownsComandos = new Map();
 let baseDeDatosCuentas = [];
 
+// --- ESTADO DE ENCENDIDO/APAGADO ---
+let botActivado = true;
+
 const CANAL_OBJETIVO = 'ε⦁s⦁*cuentas-free'; 
 const BOT_OBJETIVO = 'systemsamg';   
+
+// --- CANALES DONDE LEON NO DEBE HABLAR (EN MINÚSCULAS) ---
+const CANALES_EXCLUIDOS = ['commands', 'command', 'comandos', 'bot-commands'];
 
 const abreviacionesJuegos = {
   're4': 'resident evil 4',
@@ -200,10 +206,15 @@ client.on('messageCreate', async (message) => {
   try {
     if (message.author.bot) return;
 
+    // --- ANTIDOBLE RESPUESTA ---
+    if (message.processedByBot) return;
+    message.processedByBot = true;
+
     const textoMinusculas = message.content.toLowerCase();
     const nombreCanal = message.channel.name.toLowerCase();
     const esSamg = message.author.username.toLowerCase().includes(BOT_OBJETIVO);
 
+    // Guardar cuentas de Samg de fondo incluso si está apagado
     if (nombreCanal === CANAL_OBJETIVO && esSamg) {
       const infoProcesada = procesarMensajeSamg(message);
       if (infoProcesada.length > 0) {
@@ -216,9 +227,23 @@ client.on('messageCreate', async (message) => {
       }
     }
 
-    // --- ESCUCHA SILENCIOSA EN CADA CANAL ---
+    // --- COMANDOS DE APAGADO Y ENCENDIDO ---
+    if (message.content === '!apagar') {
+      botActivado = false;
+      return message.reply('me apagaron... descativando protocolos de la dso, ya no hablaré xd.');
+    }
+
+    if (message.content === '!encender') {
+      botActivado = true;
+      return message.reply('estoy de vuelta en el ruedo. que los zombies se guarden xd.');
+    }
+
+    // Si el bot está apagado, ignora todo lo demás (excepto los comandos de encendido de arriba)
+    if (!botActivado) return;
+
+    // --- ESCUCHA SILENCIOSA EN CADA CANAL (EXCEPTO EXCLUIDOS) ---
     const canalId = message.id ? message.channel.id : null;
-    if (canalId && !message.content.startsWith('!')) {
+    if (canalId && !message.content.startsWith('!') && !CANALES_EXCLUIDOS.includes(nombreCanal)) {
       let historialCanal = memoriasCanales.get(canalId) || [];
       historialCanal.push({ role: 'user', content: `${message.author.username} dice: ${message.content}` });
       
@@ -235,6 +260,11 @@ client.on('messageCreate', async (message) => {
     }
 
     if (message.content.startsWith('!')) return;
+
+    // --- SI EL CANAL ESTÁ EN LA LISTA NEGRA DE COMANDOS, IGNORAR ---
+    if (CANALES_EXCLUIDOS.includes(nombreCanal)) {
+      return;
+    }
 
     // --- FILTRO CON 5% DE PROBABILIDAD ALEATORIA O MENCIÓN ---
     const fueMencionado = message.mentions.has(client.user.id);
@@ -355,7 +385,7 @@ client.on('messageCreate', async (message) => {
     return message.reply(opcionesEnvio);
 
   } catch (error) {
-    console.error('Error general in messageCreate:', error);
+    console.error('Error general en messageCreate:', error);
   }
 });
 

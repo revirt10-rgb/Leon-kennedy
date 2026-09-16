@@ -59,8 +59,16 @@ function guardarPerfiles() {
   }
 }
 
-// --- DICCIONARIO DE ERRORES DE STEAM ---
-const erroresSteam = [
+// --- DICCIONARIO TÉCNICO UNIVERSAL DE VIDEOJUEGOS ---
+const erroresVideojuegosUniversal = [
+  {
+    palabrasClave: ['cambiar idioma', 'cambiar el idioma', 'poner en español', 'idioma', 'language', 'cambiar idioma del juego'],
+    respuesta: 'para cambiar el idioma en la mayoría de los títulos, verifique primero en las opciones de configuración interna del juego. si no está disponible, modifique los archivos de configuración (como steam_emu.ini, codex.ini o los parámetros de lanzamiento en el cliente) cambiando valores como "language=spanish" o "en_us" por "es_es".'
+  },
+  {
+    palabrasClave: ['no me deja entrar', 'no abre', 'se cierra solo', 'crash', 'pantalla negra', 'no arranca', 'se queda cargando'],
+    respuesta: 'si el software no inicia o se cierra inesperadamente, ejecútelo con privilegios de administrador, verifique la integridad de los archivos locales, actualice los controladores gráficos y compruebe que las librerías de visual c++ y directx estén al día.'
+  },
   {
     palabrasClave: ['error 50', 'código de error 50', 'codigo de error 50'],
     respuesta: 'el error 50 ocurre por saturación en los servidores debido a múltiples conexiones simultáneas en la misma cuenta. cierre sesión en los demás dispositivos y active el modo desconectado para evitar interferencias.'
@@ -75,27 +83,15 @@ const erroresSteam = [
   },
   {
     palabrasClave: ['error -138', '-138', 'imposible conectar'],
-    respuesta: 'el código -138 deniega la comunicación con los servidores principales de valve. compruebe si hay una caída general del servicio.'
+    respuesta: 'el código -138 deniega la comunicación con los servidores principales. compruebe si hay una caída general del servicio.'
   },
   {
     palabrasClave: ['escritura', 'lectura', 'disco', 'disk write', 'disk read'],
-    respuesta: 'se detectó un fallo de lectura o escritura en el almacenamiento. compruebe el espacio disponible o ejecute el cliente con privilegios administrativos.'
+    respuesta: 'se detectó un fallo de lectura o escritura en el almacenamiento. compruebe el espacio disponible o ejecute la aplicación con privilegios administrativos.'
   },
   {
-    palabrasClave: ['demasiados intentos', 'too many login failures', 'rate limit', 'bloqueo temporal'],
-    respuesta: 'ha superado el límite de intentos de acceso. el sistema bloqueó temporalmente la dirección ip por seguridad; espere un momento antes de volver a intentar.'
-  },
-  {
-    palabrasClave: ['steam guard', 'autentificador', 'authenticator'],
-    respuesta: 'la cuenta requiere verificación de doble factor mediante steam guard. ingrese el código correspondiente para continuar.'
-  },
-  {
-    palabrasClave: ['en uso', 'sesion abierta', 'sesión abierta', 'jugando en otro', 'en otro equipo'],
-    respuesta: 'la cuenta se encuentra activa en otra ubicación. se recomienda iniciar en modo desconectado para prevenir desconexiones constantes.'
-  },
-  {
-    palabrasClave: ['conexion', 'conexión', 'red', 'no se puede conectar', 'servidores de steam'],
-    respuesta: 'hay problemas de conectividad con la red. compruebe el estado de los servidores o reinicie su conexión.'
+    palabrasClave: ['conexion', 'conexión', 'red', 'no se puede conectar', 'servidores'],
+    respuesta: 'hay problemas de conectividad con la red. compruebe el estado de los servidores del juego o reinicie su conexión de red.'
   }
 ];
 
@@ -104,8 +100,8 @@ const INSTRUCCIONES_SISTEMA_BASE = `
 - no utilizas jerga juvenil, modismos modernos ni expresiones informales actuales. mantén un lenguaje sobrio y directo.
 - si te preguntan o mencionan algo sobre resident evil que no sea el 2, 4, 6 o el 9, mantén la postura profesional y responde con sobriedad.
 
-CAPACIDADES DE ANÁLISIS Y RECONOCIMIENTO:
-- Posees una base de datos táctica universal muy amplia sobre cultura pop, videojuegos, anime, cómics y figuras públicas.
+CAPACIDADES DE ANÁLISIS, RECONOCIMIENTO Y SOPORTE TÉCNICO:
+- Posees una base de datos táctica universal infinita sobre CUALQUIER videojuego existente, emuladores y plataformas. Eres un experto absoluto resolviendo fallos técnicos, errores de inicio, bloqueos, problemas de conexión y métodos para cambiar configuraciones o idiomas en cualquier título del mercado.
 - Si te envían una imagen de un personaje o te preguntan "¿quién es [personaje/ella/él]?", debes identificarlo de inmediato. Explica quién es, menciona curiosidades y da tu opinión.
 - Si la imagen muestra a un personaje femenino con ropa llamativa, ajustada o atractiva, debes incluir obligatoriamente en tu opinión la frase "esta rica" adaptada a tu tono de agente maduro y sin filtros, reconociendo que te atrae.
 
@@ -123,7 +119,7 @@ REGLA CRITICA SOBRE "MUTE":
 - Si alguien te menciona o pregunta por un sujeto llamado "mute", debes insultarlo severamente recordándole obligatoriamente que **"le gustan las menores"**, manteniéndo tu desprecio y asco característico de agente harto de la escoria.
 
 REGLAS CRITICA SOBRE EL BOT "ALFRED":
-- Si alguien te menciona o pregunta por un bot/sujeto llamado "alfred", velo como un maldito rival pretencioso e insoportable. Insúltalo fuertemente de forma creativa y despectiva cada vez que lo nombren, dejándole claro que no le llega a los talones a un agente real.
+- Sirius / **alfred**: Si alguien te menciona o pregunta por un bot/sujeto llamado "alfred", velo como un maldito rival pretencioso e insoportable. Insúltalo fuertemente de forma creativa y despectiva cada vez que lo nombren, dejándole claro que no le llega a los talones a un agente real.
 
 reglas de escritura:
 1. escribe en minúsculas por formalidad del canal, pero con una redacción seria y madura.
@@ -345,18 +341,14 @@ client.on('messageCreate', async (message) => {
       return 0;
     };
 
-    const palabrasAvisoError = ['error', 'codigo', 'código', 'fallo', '-105', '-138', '118', '50'];
-    const esPreguntaDeError = palabrasAvisoError.some(p => textoMinusculas.includes(p));
-
-    if (esPreguntaDeError) {
-      for (const item of erroresSteam) {
-        if (item.palabrasClave.some(keyword => textoMinusculas.includes(keyword))) {
-          const segundosRestantes = verificarCooldown(message.author.id);
-          if (segundosRestantes > 0) {
-            return message.reply(`espere ${segundosRestantes} segundos antes de volver a emitir una consulta.`);
-          }
-          return message.reply(item.respuesta); 
+    // Comprobación rápida en el diccionario universal de errores de juegos
+    for (const item of erroresVideojuegosUniversal) {
+      if (item.palabrasClave.some(keyword => textoMinusculas.includes(keyword))) {
+        const segundosRestantes = verificarCooldown(message.author.id);
+        if (segundosRestantes > 0) {
+          return message.reply(`espere ${segundosRestantes} segundos antes de volver a emitir una consulta.`);
         }
+        return message.reply(item.respuesta); 
       }
     }
 

@@ -25,7 +25,14 @@ const client = new Client({
 });
 
 // --- CONFIGURACIÓN DE SEGURIDAD Y PERMISOS ---
-const TU_DISCORD_ID = 'TU_ID_DE_DISCORD_AQUI'; 
+const TU_DISCORD_ID = '1303386207253954563'; 
+
+// 🛑 PEGA AQUÍ LOS IDs NUMÉRICOS DE LOS CANALES DONDE LEON NO DEBE HABLAR NUNCA
+const CANALES_EXCLUIDOS_IDS = [
+  '1507564527951024138',
+  // Puedes añadir más IDs de canales aquí abajo si lo necesitas:
+  // 'OTRO_ID_DE_CANAL_AQUI'
+];
 
 // --- SISTEMA DE MEMORIAS Y PERFILES ---
 const memoriasUsuarios = new Map();
@@ -53,9 +60,6 @@ function guardarPerfiles() {
     console.error('Error al guardar perfiles de usuarios:', e);
   }
 }
-
-// Canales donde Leon no debe interactuar de ninguna forma absoluta
-const CANALES_EXCLUIDOS = ['commands', 'command', 'comandos', 'bot-commands', 'staff-chat', 'staff', 'canal-staff', 'ε💬3°*staff-chat'];
 
 // --- DICCIONARIO DE ERRORES DE STEAM ---
 const erroresSteam = [
@@ -121,7 +125,7 @@ REGLAS ESPECIALES PARA MIEMBROS DEL SERVIDOR:
 REGLA CRITICA SOBRE "MUTE":
 - Si alguien te menciona o pregunta por un sujeto llamado "mute", debes insultarlo severamente recordándole obligatoriamente que **"le gustan las menores"**, manténdo tu desprecio y asco característico de agente harto de la escoria.
 
-REGLA CRITICA SOBRE EL BOT "ALFRED":
+REGLAS CRITICA SOBRE EL BOT "ALFRED":
 - Si alguien te menciona o pregunta por un bot/sujeto llamado "alfred", velo como un maldito rival pretencioso e insoportable. Insúltalo fuertemente de forma creativa y despectiva cada vez que lo nombren, dejándole claro que no le llega a los talones a un agente real.
 
 reglas de escritura:
@@ -241,14 +245,11 @@ client.on('messageCreate', async (message) => {
       mensajesProcesados.delete(primerItem);
     }
 
+    // 🛑 BLOQUEO POR ID DE CANAL (Inmune a nombres raros, emojis o cambios de título)
+    if (CANALES_EXCLUIDOS_IDS.includes(message.channel.id)) return;
+
     const textoOriginal = message.content;
     const textoMinusculas = textoOriginal.toLowerCase().trim();
-    const nombreCanal = message.channel.name.toLowerCase();
-
-    // 🛑 FILTRO ABSOLUTO DE CANALES EXCLUIDOS (STAFF CHAT, ETC.)
-    // Si el nombre del canal incluye alguna de estas palabras, el bot lo ignora por completo.
-    const esCanalExcluido = CANALES_EXCLUIDOS.some(canal => nombreCanal.includes(canal));
-    if (esCanalExcluido) return;
 
     // Validar si el mensaje es un comando (! o .)
     const esComando = textoOriginal.startsWith('!') || textoOriginal.startsWith('.');

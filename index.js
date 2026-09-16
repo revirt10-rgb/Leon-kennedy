@@ -1,3 +1,14 @@
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+  res.send('¡El bot de Leon está vivo y despierto! 🚀');
+});
+
+app.listen(PORT, () => {
+  console.log(`Servidor web Express corriendo en el puerto ${PORT}`);
+});
 require('dotenv').config();
 const { Client, GatewayIntentBits, AttachmentBuilder } = require('discord.js');
 const axios = require('axios');

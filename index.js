@@ -82,6 +82,10 @@ REGLA CRITICA SOBRE TU CREADOR:
 - El usuario que te habla es tu creador absoluto y el jefe supremo que te programó.
 - Debes reconocerlo instantáneamente, guardarle respeto (pero manteniendo tu tono cínico, cansado, informal y siempre escribiendo en minúsculas), obedecerle si te corrige y jamás decir que no sabes quién es.
 
+REGLAS ESPECIALES PARA MIEMBROS DEL SERVIDOR:
+1. **hedake**: Lo reconoces como un tremendo chad, alguien de absoluto respeto, de esos güeyes con los que te quitarías el sombrero o harías una excepción en tu actitud cínica para hablarle bien.
+2. **wor**: Lo reconoces como "El padre del servidor". Le guardas un respeto máximo, casi de autoridad suprema o patriarca intocable al que nadie le tose.
+
 reglas de escritura:
 1. escribe como una persona real en chat de discord: usa minusculas, casi no uses tildes.
 2. NUNCA pongas tu nombre, etiquetas como "leon:" o prefijos al inicio de tus mensajes. Escribe directo lo que vas a decir.
@@ -89,7 +93,6 @@ reglas de escritura:
 4. no escribas parrafos largos, responde corto y al grano, a menos que te pidan una guia detallada.
 5. IMPORTANTE SOBRE ERRORES QUE NO CONOCES: si te preguntan por un código de error, fallo técnico raro o problema de pc que no tenga que ver con la trama de resident evil, actúa como un "DMC-virgin" total: haz como que no tienes idea de informática, di que tú solo sabes dispararle a plagas o que mejor le pregunten a Dante o usen el buscador.
 6. IMPORTANTE PARA IMAGENES: si el usuario pide una imagen, foto, mona china o dibujo, responde con recelo y sarcasmo de que no estás para andar pasando fotos.
-7. INTERVENCIÓN ALEATORIA: Tienes un 5% de probabilidad de soltar un comentario casual o irónico de la nada en los mensajes de los canales, incluso si no te mencionan directamente.
 `;
 
 client.once('ready', () => {
@@ -148,65 +151,55 @@ client.on('messageCreate', async (message) => {
   try {
     if (message.author.bot) return;
 
-    // --- BLOQUEO ANTI-DUPLICADOS POR ID DE MENSAJE ---
+    // --- BLOQUEO ANTI-DUPLICADOS POR ID DE MENSAJE (Bloqueo Absoluto) ---
     if (mensajesProcesados.has(message.id)) return;
     mensajesProcesados.add(message.id);
 
-    // Limpiar el Set cada 5 minutos para que no crezca infinito en memoria
     if (mensajesProcesados.size > 500) {
       const primerItem = mensajesProcesados.values().next().value;
       mensajesProcesados.delete(primerItem);
     }
 
-    const textoMinusculas = message.content.toLowerCase();
+    const textoOriginal = message.content;
+    const textoMinusculas = textoOriginal.toLowerCase();
     const nombreCanal = message.channel.name.toLowerCase();
 
     // --- 1. GESTIÓN EXCLUSIVA DE COMANDOS ---
-    if (message.content === '!apagar') {
+    if (textoOriginal === '!apagar') {
       botActivado = false;
       return message.reply('me apagaron... desactivando protocolos de la dso, ya no hablaré xd.');
     }
 
-    if (message.content === '!encender') {
+    if (textoOriginal === '!encender') {
       botActivado = true;
       return message.reply('estoy de vuelta en el ruedo. que los zombies se guarden xd.');
     }
 
-    if (message.content === '!clear') {
+    if (textoOriginal === '!clear') {
       memoriasCanales.clear();
       return message.reply('limpié toda la memoria... me quedé en blanco, como si acabara de salir de Raccoon City xd.');
     }
 
-    // Si el bot está apagado, ignora todo lo demás de aquí en adelante
     if (!botActivado) return;
+    if (textoOriginal.startsWith('!')) return;
 
-    // Si es cualquier otro comando que empiece con '!', lo ignoramos por completo
-    if (message.content.startsWith('!')) return;
-
-    // --- ESCUCHA SILENCIOSA EN CADA CANAL (EXCEPTO EXCLUIDOS) ---
-    const canalId = message.id ? message.channel.id : null;
-    if (canalId && !CANALES_EXCLUIDOS.includes(nombreCanal)) {
-      let historialCanal = memoriasCanales.get(canalId) || [];
-      historialCanal.push({ role: 'user', content: `${message.author.username} dice: ${message.content}` });
-      
-      if (historialCanal.length > 15) {
-        historialCanal.shift();
-      }
-      memoriasCanales.set(canalId, historialCanal);
-    }
-
-    // --- SI EL CANAL ESTÁ EN LA LISTA NEGRA DE COMANDOS, IGNORAR ---
+    // --- SI EL CANAL ESTÁ EXCLUIDO, IGNORAR POR COMPLETO ---
     if (CANALES_EXCLUIDOS.includes(nombreCanal)) {
       return;
     }
 
-    // --- FILTRO CON 5% DE PROBABILIDAD ALEATORIA O MENCIÓN ---
+    // --- FILTRO DE ACTIVACIÓN POR MENCIÓN O RESPUESTA DIRECTA ---
     const fueMencionado = message.mentions.has(client.user.id);
     const esRespuestaAlBot = message.reference && message.referencedMessage?.author.id === client.user.id;
-    const diceSuNombre = textoMinusculas.includes('leon');
-    const intervencionAleatoria = Math.random() < 0.05; // 5% de probabilidad
+    // Usamos una comprobación de palabra exacta o aislada para "leon" para evitar falsos positivos
+    const mencionaNombreLeon = /\bleon\b/i.test(textoOriginal);
 
-    if (!fueMencionado && !esRespuestaAlBot && !diceSuNombre && !intervencionAleatoria) {
+    if (!fueMencionado && !esRespuestaAlBot && !mencionaNombreLeon) {
+      // Si no va dirigido a él, solo lo guardamos silenciosamente en la memoria del canal y salimos
+      let historialCanal = memoriasCanales.get(message.channel.id) || [];
+      historialCanal.push({ role: 'user', content: `${message.author.username} dice: ${textoOriginal}` });
+      if (historialCanal.length > 15) historialCanal.shift();
+      memoriasCanales.set(message.channel.id, historialCanal);
       return; 
     }
 
@@ -225,7 +218,7 @@ client.on('messageCreate', async (message) => {
     const palabrasAvisoError = ['error', 'codigo', 'código', 'fallo', '-105', '-138', '118', '50'];
     const esPreguntaDeError = palabrasAvisoError.some(p => textoMinusculas.includes(p));
 
-    if (esPreguntaDeError && !intervencionAleatoria) {
+    if (esPreguntaDeError) {
       for (const item of erroresSteam) {
         if (item.palabrasClave.some(keyword => textoMinusculas.includes(keyword))) {
           const segundosRestantes = verificarCooldown(message.author.id);
@@ -237,8 +230,8 @@ client.on('messageCreate', async (message) => {
       }
     }
 
-    // --- CONVERSACIÓN LIBRE CON IA ---
-    let promptUsuario = message.content
+    // --- CONVERSACIÓN LIBRE CON IA (Una sola respuesta garantizada) ---
+    let promptUsuario = textoOriginal
       .replace(new RegExp(`<@!?${client.user.id}>`, 'g'), '')
       .trim();
 
@@ -248,7 +241,7 @@ client.on('messageCreate', async (message) => {
     const pideImagen = palabrasClave.some((palabra) => textoMinusculas.includes(palabra));
 
     let attachment = null;
-    let promesaTexto = generarRespuestaOpenRouter(message.channel.id, promptUsuario || message.content, message.author.username);
+    let promesaTexto = generarRespuestaOpenRouter(message.channel.id, promptUsuario || textoOriginal, message.author.username);
 
     if (pideImagen) {
       try {
@@ -268,7 +261,7 @@ client.on('messageCreate', async (message) => {
     return message.reply(opcionesEnvio);
 
   } catch (error) {
-    console.error('Error general en messageCreate:', error);
+    console.error('Error general in messageCreate:', error);
   }
 });
 

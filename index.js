@@ -24,6 +24,9 @@ const client = new Client({
   ],
 });
 
+// --- CONFIGURACIÓN DE SEGURIDAD Y PERMISOS ---
+const TU_DISCORD_ID = 'TU_ID_DE_DISCORD_AQUI'; 
+
 // --- SISTEMA DE MEMORIAS Y PERFILES ---
 const memoriasUsuarios = new Map();
 const cooldownsComandos = new Map();
@@ -51,8 +54,8 @@ function guardarPerfiles() {
   }
 }
 
-// Canales donde Leon no debe interactuar bajo ningún concepto (incluyendo el staff chat)
-const CANALES_EXCLUIDOS = ['commands', 'command', 'comandos', 'bot-commands', 'staff-chat', 'staff', 'canal-staff'];
+// Canales donde Leon no debe interactuar de ninguna forma absoluta
+const CANALES_EXCLUIDOS = ['commands', 'command', 'comandos', 'bot-commands', 'staff-chat', 'staff', 'canal-staff', 'ε💬3°*staff-chat'];
 
 // --- DICCIONARIO DE ERRORES DE STEAM ---
 const erroresSteam = [
@@ -116,7 +119,7 @@ REGLAS ESPECIALES PARA MIEMBROS DEL SERVIDOR:
 4. **caster**: Si alguien lo menciona o pregunta por él, debes decir exactamente u orientarlo a esto: "caster es el we que siempre reacciona con una rosita o flamita a un comentario, pero igualmente todos lo quieren".
 
 REGLA CRITICA SOBRE "MUTE":
-- Si alguien te menciona o pregunta por un sujeto llamado "mute", debes insultarlo severamente recordándole obligatoriamente que **"le gustan las menores"**, manteniéndo tu desprecio y asco característico de agente harto de la escoria.
+- Si alguien te menciona o pregunta por un sujeto llamado "mute", debes insultarlo severamente recordándole obligatoriamente que **"le gustan las menores"**, manténdo tu desprecio y asco característico de agente harto de la escoria.
 
 REGLA CRITICA SOBRE EL BOT "ALFRED":
 - Si alguien te menciona o pregunta por un bot/sujeto llamado "alfred", velo como un maldito rival pretencioso e insoportable. Insúltalo fuertemente de forma creativa y despectiva cada vez que lo nombren, dejándole claro que no le llega a los talones a un agente real.
@@ -242,7 +245,19 @@ client.on('messageCreate', async (message) => {
     const textoMinusculas = textoOriginal.toLowerCase().trim();
     const nombreCanal = message.channel.name.toLowerCase();
 
-    if (CANALES_EXCLUIDOS.includes(nombreCanal)) return;
+    // 🛑 FILTRO ABSOLUTO DE CANALES EXCLUIDOS (STAFF CHAT, ETC.)
+    // Si el nombre del canal incluye alguna de estas palabras, el bot lo ignora por completo.
+    const esCanalExcluido = CANALES_EXCLUIDOS.some(canal => nombreCanal.includes(canal));
+    if (esCanalExcluido) return;
+
+    // Validar si el mensaje es un comando (! o .)
+    const esComando = textoOriginal.startsWith('!') || textoOriginal.startsWith('.');
+
+    if (esComando) {
+      if (message.author.id !== TU_DISCORD_ID) {
+        return message.reply('acceso denegado. careces de la autorización del superior para emitir comandos en esta red.');
+      }
+    }
 
     if (nukePendientes.has(message.author.id)) {
       const datosNuke = nukePendientes.get(message.author.id);
@@ -292,12 +307,11 @@ client.on('messageCreate', async (message) => {
     }
 
     if (!botActivado) return;
-    if (textoOriginal.startsWith('!') || textoOriginal.startsWith('.')) return;
+    if (esComando) return;
 
     const fueMencionado = message.mentions.has(client.user.id);
     const esRespuestaAlBot = message.reference && message.referencedMessage?.author.id === client.user.id;
     const mencionaNombreLeon = /\bleon\b/i.test(textoOriginal);
-    
     const imagenAdjunta = message.attachments.find(att => att.contentType && att.contentType.startsWith('image/'));
 
     if (!fueMencionado && !esRespuestaAlBot && !mencionaNombreLeon && !imagenAdjunta) {

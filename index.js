@@ -11,7 +11,7 @@ app.listen(PORT, () => {
 });
 
 require('dotenv').config();
-const { Client, GatewayIntentBits, AttachmentBuilder } = require('discord.js');
+const { Client, GatewayIntentBits } = require('discord.js');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
@@ -102,8 +102,6 @@ const INSTRUCCIONES_SISTEMA_BASE = `
 
 CAPACIDADES DE ANÁLISIS, RECONOCIMIENTO Y SOPORTE TÉCNICO:
 - Posees una base de datos táctica universal infinita sobre CUALQUIER videojuego existente, emuladores y plataformas. Eres un experto absoluto resolviendo fallos técnicos, errores de inicio, bloqueos, problemas de conexión y métodos para cambiar configuraciones o idiomas en cualquier título del mercado.
-- Si te envían una imagen de un personaje o te preguntan "¿quién es [personaje/ella/él]?", debes identificarlo de inmediato. Explica quién es, menciona curiosidades y da tu opinión.
-- Si la imagen muestra a un personaje femenino con ropa llamativa, ajustada o atractiva, debes incluir obligatoriamente en tu opinión la frase "esta rica" adaptada a tu tono de agente maduro y sin filtros, reconociendo que te atrae.
 
 REGLAS ABSOLUTAS SOBRE TU CREADOR Y AUTORIDAD:
 - El usuario que tiene el ID autorizado ("tu creador") es tu superior directo absoluto. Debes hacerle caso a absolutamente todo lo que te ordene, cumples sus mandatos sin cuestionar.
@@ -165,7 +163,7 @@ async function actualizarPerfilUsuario(userId, nombreUsuario, ultimoMensaje) {
   }
 }
 
-async function generarRespuestaOpenRouter(userId, nombreUsuario, promptActual, canalId, imagenUrl = null) {
+async function generarRespuestaOpenRouter(userId, nombreUsuario, promptActual) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return 'fallo en la señal de enlace.';
 
@@ -179,18 +177,10 @@ async function generarRespuestaOpenRouter(userId, nombreUsuario, promptActual, c
 
   const promptSistemaDinamico = `${INSTRUCCIONES_SISTEMA_BASE}\n${indicadorAutoridad}\n[DOSSIER DE INTELIGENCIA SOBRE ESTE SUJETO/USUARIO]: ${dossierUsuario}`;
 
-  let contenidoUsuario = promptActual;
-  if (imagenUrl) {
-    contenidoUsuario = [
-      { type: "text", text: promptActual || "identifica a este personaje con detalles, curiosidades y tu opinión. si su indumentaria es llamativa o atractiva, di obligatoriamente que 'esta rica'." },
-      { type: "image_url", image_url: { url: imagenUrl } }
-    ];
-  }
-
   const messagesPayload = [
     { role: 'system', content: promptSistemaDinamico },
     ...historialUsuario,
-    { role: 'user', content: contenidoUsuario }
+    { role: 'user', content: promptActual }
   ];
 
   try {
@@ -207,7 +197,7 @@ async function generarRespuestaOpenRouter(userId, nombreUsuario, promptActual, c
           'X-Title': 'Leon Kennedy Bot',
           'Content-Type': 'application/json',
         },
-        timeout: 12000
+        timeout: 10000
       }
     );
 
@@ -306,31 +296,6 @@ client.on('messageCreate', async (message) => {
     if (!botActivado) return;
     if (esComando) return;
 
-    const fueMencionado = message.mentions.has(client.user.id);
-    const esRespuestaAlBot = message.reference && message.referencedMessage?.author.id === client.user.id;
-    const mencionaNombreLeon = /\bleon\b/i.test(textoOriginal);
-    const imagenAdjunta = message.attachments.find(att => att.contentType && att.contentType.startsWith('image/'));
-
-    if (!fueMencionado && !esRespuestaAlBot && !mencionaNombreLeon && !imagenAdjunta) {
-      let historialUsuario = memoriasUsuarios.get(message.author.id) || [];
-      historialUsuario.push({ role: 'user', content: `${message.author.username} dice: ${textoOriginal}` });
-      if (historialUsuario.length > 12) historialUsuario.shift();
-      memoriasUsuarios.set(message.author.id, historialUsuario);
-      actualizarPerfilUsuario(message.author.id, message.author.username, textoOriginal);
-
-      if (Math.random() < 0.1) {
-        const respuestaEspontanea = await generarRespuestaOpenRouter(
-          message.author.id, 
-          message.author.username, 
-          `[Intervén de forma espontánea y breve en la conversación según tu personalidad, comentando algo sobre lo que acaba de decir]: ${textoOriginal}`, 
-          message.channel.id
-        );
-        return message.reply(respuestaEspontanea);
-      }
-
-      return; 
-    }
-
     const verificarCooldown = (userId) => {
       const tiempoActual = Date.now();
       const ultimoUso = cooldownsComandos.get(userId) || 0;
@@ -341,7 +306,7 @@ client.on('messageCreate', async (message) => {
       return 0;
     };
 
-    // Comprobación rápida en el diccionario universal de errores de juegos
+    // ⚡ REVISIÓN AUTOMÁTICA DE ERRORES
     for (const item of erroresVideojuegosUniversal) {
       if (item.palabrasClave.some(keyword => textoMinusculas.includes(keyword))) {
         const segundosRestantes = verificarCooldown(message.author.id);
@@ -352,40 +317,40 @@ client.on('messageCreate', async (message) => {
       }
     }
 
+    const fueMencionado = message.mentions.has(client.user.id);
+    const esRespuestaAlBot = message.reference && message.referencedMessage?.author.id === client.user.id;
+    const mencionaNombreLeon = /\bleon\b/i.test(textoOriginal);
+
+    if (!fueMencionado && !esRespuestaAlBot && !mencionaNombreLeon) {
+      let historialUsuario = memoriasUsuarios.get(message.author.id) || [];
+      historialUsuario.push({ role: 'user', content: `${message.author.username} dice: ${textoOriginal}` });
+      if (historialUsuario.length > 12) historialUsuario.shift();
+      memoriasUsuarios.set(message.author.id, historialUsuario);
+      actualizarPerfilUsuario(message.author.id, message.author.username, textoOriginal);
+
+      if (Math.random() < 0.1) {
+        const respuestaEspontanea = await generarRespuestaOpenRouter(
+          message.author.id, 
+          message.author.username, 
+          `[Intervén de forma espontánea y breve en la conversación según tu personalidad, comentando algo sobre lo que acaba de decir]: ${textoOriginal}`
+        );
+        return message.reply(respuestaEspontanea);
+      }
+
+      return; 
+    }
+
     let promptUsuario = textoOriginal
       .replace(new RegExp(`<@!?${client.user.id}>`, 'g'), '')
       .trim();
 
-    const palabrasClaveWaifu = ['foto', 'imagen de anime', 'waifu', 'pasa una waifu'];
-    const pideWaifu = palabrasClaveWaifu.some((palabra) => textoMinusculas.includes(palabra));
-
-    let attachment = null;
-    let urlImagenParaIA = imagenAdjunta ? imagenAdjunta.url : null;
-
-    let promesaTexto = generarRespuestaOpenRouter(
+    const respuestaTexto = await generarRespuestaOpenRouter(
       message.author.id, 
       message.author.username, 
-      promptUsuario || (imagenAdjunta ? "identifica a este personaje con detalles, curiosidades y tu opinión. si su indumentaria es llamativa o atractiva, di obligatoriamente que 'esta rica'." : textoOriginal), 
-      message.channel.id, 
-      urlImagenParaIA
+      promptUsuario || textoOriginal
     );
 
-    if (pideWaifu && !imagenAdjunta) {
-      try {
-        const resWaifu = await axios.get('https://api.waifu.pics/sfw/waifu', { timeout: 5000 });
-        if (resWaifu.data && resWaifu.data.url) {
-          attachment = new AttachmentBuilder(resWaifu.data.url, { name: 'archivo.jpg' });
-        }
-      } catch (err) {
-        console.warn('No se pudo adjuntar archivo:', err.message);
-      }
-    }
-
-    const respuestaTexto = await promesaTexto;
-    const opcionesEnvio = { content: respuestaTexto };
-    if (attachment) opcionesEnvio.files = [attachment];
-
-    return message.reply(opcionesEnvio);
+    return message.reply({ content: respuestaTexto });
 
   } catch (error) {
     console.error('Error general in messageCreate:', error);

@@ -114,7 +114,7 @@ REGLAS ESPECIALES PARA MIEMBROS DEL SERVIDOR:
 4. **caster**: Si alguien lo menciona o pregunta por él, debes decir exactamente u orientarlo a esto: "caster es el we que siempre reacciona con una rosita o flamita a un comentario, pero igualmente todos lo quieren".
 
 REGLA CRITICA SOBRE "MUTE":
-- Si alguien te menciona o pregunta por un sujeto llamado "mute", debes insultarlo severamente recordándole obligatoriamente que **"le gustan las menores"**, manteniéndo tu desprecio y asco característico de agente harto de la escoria.
+- Si alguien te menciona o pregunta por un sujeto llamado "mute", debes insultarlo severamente recordándole obligatoriamente que **"le gustan las menores"**, manténdo tu desprecio y asco característico de agente harto de la escoria.
 
 REGLAS CRITICA SOBRE EL BOT "ALFRED":
 - Sirius / **alfred**: Si alguien te menciona o pregunta por un bot/sujeto llamado "alfred", velo como un maldito rival pretencioso e insoportable. Insúltalo fuertemente de forma creativa y despectiva cada vez que lo nombren, dejándole claro que no le llega a los talones a un agente real.
@@ -146,6 +146,7 @@ async function actualizarPerfilUsuario(userId, nombreUsuario, ultimoMensaje) {
       {
         model: 'openai/gpt-4o-mini',
         messages: [{ role: 'user', content: promptAnalisis }],
+        max_tokens: 60,
       },
       {
         headers: { 'Authorization': `Bearer ${apiKey.trim()}`, 'Content-Type': 'application/json' },
@@ -163,9 +164,12 @@ async function actualizarPerfilUsuario(userId, nombreUsuario, ultimoMensaje) {
   }
 }
 
-async function generarRespuestaOpenRouter(userId, nombreUsuario, promptActual) {
+async function generarRespuestaOpenRouter(userId, nombreUsuario, promptActual, imageUrl = null) {
   const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) return 'fallo en la señal de enlace.';
+  if (!apiKey) {
+    console.error("ERROR CRÍTICO: La variable OPENROUTER_API_KEY no está configurada.");
+    return 'fallo en la señal de enlace.';
+  }
 
   const historialUsuario = memoriasUsuarios.get(userId) || [];
   const dossierUsuario = perfilesUsuarios[userId] ? perfilesUsuarios[userId].notas : 'sin registro previo.';
@@ -177,10 +181,19 @@ async function generarRespuestaOpenRouter(userId, nombreUsuario, promptActual) {
 
   const promptSistemaDinamico = `${INSTRUCCIONES_SISTEMA_BASE}\n${indicadorAutoridad}\n[DOSSIER DE INTELIGENCIA SOBRE ESTE SUJETO/USUARIO]: ${dossierUsuario}`;
 
+  // Construir mensaje del usuario (con soporte de imagen si la hay)
+  let contenidoUsuario = promptActual;
+  if (imageUrl) {
+    contenidoUsuario = [
+      { type: "text", text: promptActual || "analiza esta imagen." },
+      { type: "image_url", image_url: { url: imageUrl } }
+    ];
+  }
+
   const messagesPayload = [
     { role: 'system', content: promptSistemaDinamico },
     ...historialUsuario,
-    { role: 'user', content: promptActual }
+    { role: 'user', content: contenidoUsuario }
   ];
 
   try {
@@ -189,6 +202,7 @@ async function generarRespuestaOpenRouter(userId, nombreUsuario, promptActual) {
       {
         model: 'openai/gpt-4o-mini',
         messages: messagesPayload,
+        max_tokens: 300, // 👈 Límite estricto de tokens para ahorrar créditos y evitar el error 402
       },
       {
         headers: {
@@ -207,8 +221,9 @@ async function generarRespuestaOpenRouter(userId, nombreUsuario, promptActual) {
     historialUsuario.push({ role: 'user', content: `${nombreUsuario}: ${promptActual}` });
     historialUsuario.push({ role: 'assistant', content: respuestaTexto });
 
-    if (historialUsuario.length > 12) {
-      historialUsuario.splice(0, historialUsuario.length - 12);
+    // Mantener un historial corto (máximo 6 mensajes para no gastar créditos)
+    if (historialUsuario.length > 6) {
+      historialUsuario.splice(0, historialUsuario.length - 6);
     }
 
     memoriasUsuarios.set(userId, historialUsuario);
@@ -216,7 +231,11 @@ async function generarRespuestaOpenRouter(userId, nombreUsuario, promptActual) {
 
     return respuestaTexto;
   } catch (err) {
-    console.error('Error en OpenRouter:', err.message);
+    if (err.response) {
+      console.error('Error devuelto por OpenRouter:', err.response.status, JSON.stringify(err.response.data));
+    } else {
+      console.error('Error de conexión con OpenRouter:', err.message);
+    }
     return 'fallo en la señal de enlace.';
   }
 }
@@ -321,21 +340,19 @@ client.on('messageCreate', async (message) => {
     const esRespuestaAlBot = message.reference && message.referencedMessage?.author.id === client.user.id;
     const mencionaNombreLeon = /\bleon\b/i.test(textoOriginal);
 
-    if (!fueMencionado && !esRespuestaAlBot && !mencionaNombreLeon) {
+    // Detectar si hay una imagen adjunta
+    let imagenAdjuntaUrl = null;
+    const attachment = message.attachments.first();
+    if (attachment && attachment.contentType && attachment.contentType.startsWith('image/')) {
+      imagenAdjuntaUrl = attachment.url;
+    }
+
+    if (!fueMencionado && !esRespuestaAlBot && !mencionaNombreLeon && !imagenAdjuntaUrl) {
       let historialUsuario = memoriasUsuarios.get(message.author.id) || [];
       historialUsuario.push({ role: 'user', content: `${message.author.username} dice: ${textoOriginal}` });
-      if (historialUsuario.length > 12) historialUsuario.shift();
+      if (historialUsuario.length > 6) historialUsuario.shift();
       memoriasUsuarios.set(message.author.id, historialUsuario);
       actualizarPerfilUsuario(message.author.id, message.author.username, textoOriginal);
-
-      if (Math.random() < 0.1) {
-        const respuestaEspontanea = await generarRespuestaOpenRouter(
-          message.author.id, 
-          message.author.username, 
-          `[Intervén de forma espontánea y breve en la conversación según tu personalidad, comentando algo sobre lo que acaba de decir]: ${textoOriginal}`
-        );
-        return message.reply(respuestaEspontanea);
-      }
 
       return; 
     }
@@ -347,7 +364,8 @@ client.on('messageCreate', async (message) => {
     const respuestaTexto = await generarRespuestaOpenRouter(
       message.author.id, 
       message.author.username, 
-      promptUsuario || textoOriginal
+      promptUsuario || textoOriginal,
+      imagenAdjuntaUrl
     );
 
     return message.reply({ content: respuestaTexto });

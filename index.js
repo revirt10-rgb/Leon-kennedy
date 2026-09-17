@@ -27,9 +27,18 @@ const client = new Client({
 // --- CONFIGURACIÓN DE SEGURIDAD Y PERMISOS ---
 const TU_DISCORD_ID = '1479539168735400168'; 
 
-// 🛑 ID DEL CANAL EXCLUIDO YA CONFIGURADO
-const CANALES_EXCLUIDOS_IDS = [
-  '1507564527951024138',
+// 🛑 CATEGORÍAS EXCLUIDAS (Pega aquí los IDs de las categorías que deseas que Leon ignore por completo)
+const CATEGORIAS_EXCLUIDAS_IDS = [
+  '1507445683635097711', // inicio
+  '1507446970640502985', // main
+  '1547133380661874738', // promociones
+  '1547135587683663922', // cursos
+  '1547133467035312178', // pirateria
+  '1547134854989357086', // denuvo
+  '1507771368861859851', // socios
+  '1507446994719871116', // staff
+  '1547133514569220136', // proyecto booster
+  '1548882231747940462', // pruebas wor
 ];
 
 // --- SISTEMA DE MEMORIAS Y PERFILES ---
@@ -181,7 +190,6 @@ async function generarRespuestaOpenRouter(userId, nombreUsuario, promptActual, i
 
   const promptSistemaDinamico = `${INSTRUCCIONES_SISTEMA_BASE}\n${indicadorAutoridad}\n[DOSSIER DE INTELIGENCIA SOBRE ESTE SUJETO/USUARIO]: ${dossierUsuario}`;
 
-  // Construir mensaje del usuario (con soporte de imagen si la hay)
   let contenidoUsuario = promptActual;
   if (imageUrl) {
     contenidoUsuario = [
@@ -202,7 +210,7 @@ async function generarRespuestaOpenRouter(userId, nombreUsuario, promptActual, i
       {
         model: 'openai/gpt-4o-mini',
         messages: messagesPayload,
-        max_tokens: 300, // 👈 Límite estricto de tokens para ahorrar créditos y evitar el error 402
+        max_tokens: 300,
       },
       {
         headers: {
@@ -221,7 +229,6 @@ async function generarRespuestaOpenRouter(userId, nombreUsuario, promptActual, i
     historialUsuario.push({ role: 'user', content: `${nombreUsuario}: ${promptActual}` });
     historialUsuario.push({ role: 'assistant', content: respuestaTexto });
 
-    // Mantener un historial corto (máximo 6 mensajes para no gastar créditos)
     if (historialUsuario.length > 6) {
       historialUsuario.splice(0, historialUsuario.length - 6);
     }
@@ -252,7 +259,10 @@ client.on('messageCreate', async (message) => {
       mensajesProcesados.delete(primerItem);
     }
 
-    if (CANALES_EXCLUIDOS_IDS.includes(message.channel.id)) return;
+    // 🛑 VALIDACIÓN POR CATEGORÍA EXCLUIDA
+    if (message.channel.parentId && CATEGORIAS_EXCLUIDAS_IDS.includes(message.channel.parentId)) {
+      return;
+    }
 
     const textoOriginal = message.content;
     const textoMinusculas = textoOriginal.toLowerCase().trim();
@@ -340,7 +350,6 @@ client.on('messageCreate', async (message) => {
     const esRespuestaAlBot = message.reference && message.referencedMessage?.author.id === client.user.id;
     const mencionaNombreLeon = /\bleon\b/i.test(textoOriginal);
 
-    // Detectar si hay una imagen adjunta
     let imagenAdjuntaUrl = null;
     const attachment = message.attachments.first();
     if (attachment && attachment.contentType && attachment.contentType.startsWith('image/')) {
